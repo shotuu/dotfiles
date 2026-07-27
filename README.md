@@ -1,5 +1,17 @@
 # shotu-dotfiles
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-232136?style=flat-square&logo=opensourceinitiative&logoColor=f6c177)](LICENSE)
+[![macOS](https://img.shields.io/badge/macOS-232136?style=flat-square&logo=apple&logoColor=f6c177)](#macos)
+[![Linux](https://img.shields.io/badge/Linux-232136?style=flat-square&logo=linux&logoColor=f6c177)](#linux)
+[![Windows](https://img.shields.io/badge/Windows-232136?style=flat-square&logoColor=f6c177)](#windows-with-wsl-recommended-for-the-full-tmuxzsh-setup)
+[![WezTerm](https://img.shields.io/badge/WezTerm-232136?style=flat-square&logo=wezterm&logoColor=f6c177)](https://wezterm.org)
+[![tmux](https://img.shields.io/badge/tmux-232136?style=flat-square&logo=tmux&logoColor=f6c177)](https://github.com/tmux/tmux)
+[![Neovim](https://img.shields.io/badge/Neovim-232136?style=flat-square&logo=neovim&logoColor=f6c177)](https://neovim.io)
+[![zsh](https://img.shields.io/badge/zsh-232136?style=flat-square&logo=zsh&logoColor=f6c177)](https://www.zsh.org)
+[![PowerShell](https://img.shields.io/badge/PowerShell-232136?style=flat-square&logoColor=f6c177)](https://github.com/PowerShell/PowerShell)
+[![Starship](https://img.shields.io/badge/Starship-232136?style=flat-square&logo=starship&logoColor=f6c177)](https://starship.rs)
+[![Homebrew](https://img.shields.io/badge/Homebrew-232136?style=flat-square&logo=homebrew&logoColor=f6c177)](https://brew.sh)
+
 A portable terminal and Neovim setup for macOS, Linux, and Windows, built
 around:
 
