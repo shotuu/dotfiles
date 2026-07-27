@@ -1,0 +1,38 @@
+format = """
+$directory\
+$git_branch\
+$git_status\
+$line_break\
+$character"""
+
+add_newline = false
+
+[directory]
+style = "bold #31748f"
+truncation_length = 3
+truncate_to_repo = true
+format = "[$path]($style)"
+
+[git_branch]
+symbol = ""
+style = "bold #c4a7e7"
+format = " [$branch]($style)"
+
+[git_status]
+style = "bold #f6c177"
+format = "[$all_status$ahead_behind]($style)"
+up_to_date = ""
+untracked = " ?${count}"
+modified = " !${count}"
+staged = " +${count}"
+ahead = " ⇡${count}"
+behind = " ⇣${count}"
+diverged = " ⇕⇡${ahead_count}⇣${behind_count}"
+
+[character]
+success_symbol = "[❯](bold #c4a7e7) "
+error_symbol = "[❯](bold #eb6f92) "
+vimcmd_symbol = "[❮](bold #9ccfd8) "
+
+[cmd_duration]
+disabled = true

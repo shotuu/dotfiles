@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# Neovim runtime/generated files
+.config/nvim/lazy-lock.json
+.config/nvim/.luarc.json
+
+# Local files and secrets
+.env
+.env.*
+*.local
+*.secret
+secrets/

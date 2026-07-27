@@ -1,0 +1,6 @@
+# macOS-only casks. Homebrew casks are not available through Linuxbrew, so
+# these are installed separately from the cross-platform Brewfile and only
+# on Darwin. On Linux, install WezTerm and a Nerd Font through your
+# distribution's package manager instead (see README.md).
+cask "wezterm"
+cask "font-hack-nerd-font"
