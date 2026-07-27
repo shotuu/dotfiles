@@ -1,5 +1,7 @@
 # shotu-dotfiles
 
+![WezTerm with tmux and Neovim, Rose Pine Moon theme](.github/banner.svg)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-232136?style=flat-square&logo=opensourceinitiative&logoColor=f6c177)](LICENSE)
 [![macOS](https://img.shields.io/badge/macOS-232136?style=flat-square&logo=apple&logoColor=f6c177)](#macos)
 [![Linux](https://img.shields.io/badge/Linux-232136?style=flat-square&logo=linux&logoColor=f6c177)](#linux)

@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" role="img" aria-label="WezTerm with tmux and Neovim, Rose Pine Moon theme">
+  <title>shotu-dotfiles: WezTerm, tmux, and Neovim with the Rose Pine Moon theme</title>
+  <defs>
+    <style>
+      .mono { font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; }
+      .b { font-weight: 700; }
+    </style>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1a1826"/>
+      <stop offset="1" stop-color="#232136"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="60"/>
+    </filter>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#000000" flood-opacity="0.45"/>
+    </filter>
+    <clipPath id="winClip">
+      <rect x="60" y="55" width="1080" height="520" rx="14" ry="14"/>
+    </clipPath>
+  </defs>
+
+  <!-- backdrop -->
+  <rect x="0" y="0" width="1200" height="630" fill="url(#bg)"/>
+  <ellipse cx="180" cy="120" rx="220" ry="160" fill="#3e8fb0" opacity="0.16" filter="url(#glow)"/>
+  <ellipse cx="1060" cy="90" rx="240" ry="170" fill="#c4a7e7" opacity="0.14" filter="url(#glow)"/>
+  <ellipse cx="1000" cy="560" rx="260" ry="150" fill="#f6c177" opacity="0.10" filter="url(#glow)"/>
+
+  <!-- window -->
+  <g filter="url(#shadow)">
+    <rect x="60" y="55" width="1080" height="520" rx="14" ry="14" fill="#232136" stroke="#44415a" stroke-width="1"/>
+  </g>
+
+  <g clip-path="url(#winClip)">
+    <!-- chrome -->
+    <rect x="60" y="55" width="1080" height="34" fill="#2a273f"/>
+    <circle cx="84" cy="72" r="6" fill="#ec6a5e"/>
+    <circle cx="102" cy="72" r="6" fill="#f4bf50"/>
+    <circle cx="120" cy="72" r="6" fill="#61c454"/>
+
+    <!-- tmux status bar -->
+    <rect x="60" y="89" width="1080" height="30" fill="#393552"/>
+    <rect x="68" y="95" width="72" height="18" rx="3" fill="#f6c177"/>
+    <text class="mono b" x="104" y="108" fill="#232136" font-size="12" text-anchor="middle">main</text>
+
+    <rect x="150" y="95" width="76" height="18" rx="2" fill="#f6c177"/>
+    <text class="mono b" x="188" y="108" fill="#232136" font-size="12" text-anchor="middle">1: nvim</text>
+
+    <text class="mono" x="236" y="108" fill="#908caa" font-size="12">2: zsh</text>
+
+    <text class="mono b" x="1128" y="108" fill="#c4a7e7" font-size="12" text-anchor="end">shotu  <tspan fill="#6e6a86">•</tspan>  <tspan fill="#9ccfd8">2026-07-28  14:47:32</tspan></text>
+
+    <!-- content area -->
+    <rect x="60" y="119" width="1080" height="430" fill="#232136"/>
+
+    <!-- sidebar -->
+    <rect x="60" y="119" width="230" height="430" fill="#2a273f"/>
+    <line x1="290" y1="119" x2="290" y2="549" stroke="#44415a" stroke-width="1"/>
+
+    <text class="mono b" x="76" y="150" fill="#e0def4" font-size="13">shotu-dotfiles</text>
+    <text class="mono" x="76" y="176" fill="#908caa" font-size="12">▾ .config</text>
+    <text class="mono" x="92" y="198" fill="#908caa" font-size="12">▾ nvim</text>
+    <text class="mono" x="92" y="220" fill="#908caa" font-size="12">▸ wezterm</text>
+
+    <rect x="64" y="231" width="222" height="20" fill="#393552"/>
+    <text class="mono b" x="92" y="246" fill="#f6c177" font-size="12">wezterm.lua</text>
+
+    <text class="mono" x="76" y="272" fill="#e0def4" font-size="12">.tmux.conf</text>
+    <text class="mono" x="76" y="296" fill="#e0def4" font-size="12">install.sh</text>
+    <text class="mono" x="76" y="320" fill="#e0def4" font-size="12">README.md</text>
+
+    <!-- editor: cursorline -->
+    <rect x="290" y="206" width="850" height="24" fill="#2a273f"/>
+
+    <!-- editor: gutter + code -->
+    <g class="mono" font-size="13">
+      <text x="336" y="147" fill="#6e6a86" text-anchor="end">3</text>
+      <text x="350" y="147" fill="#6e6a86">-- rose-pine-moon palette</text>
+
+      <text x="336" y="171" fill="#6e6a86" text-anchor="end">2</text>
+      <text x="350" y="171" fill="#3e8fb0">local</text>
+      <text x="390" y="171" fill="#e0def4">rose = {</text>
+
+      <text x="336" y="195" fill="#6e6a86" text-anchor="end">1</text>
+      <text x="366" y="195" fill="#c4a7e7">base</text>
+      <text x="406" y="195" fill="#e0def4">=</text>
+      <text x="420" y="195" fill="#f6c177">"#232136",</text>
+
+      <rect x="292" y="209" width="3" height="18" fill="#3e8fb0"/>
+      <text x="336" y="222" fill="#e0def4" class="b" text-anchor="end">42</text>
+      <text x="366" y="222" fill="#c4a7e7">gold</text>
+      <text x="406" y="222" fill="#e0def4">=</text>
+      <text x="420" y="222" fill="#f6c177">"#f6c177",</text>
+      <rect x="524" y="207" width="2" height="20" fill="#e0def4"/>
+
+      <text x="336" y="246" fill="#6e6a86" text-anchor="end">1</text>
+      <text x="366" y="246" fill="#c4a7e7">pine</text>
+      <text x="406" y="246" fill="#e0def4">=</text>
+      <text x="420" y="246" fill="#f6c177">"#3e8fb0",</text>
+
+      <text x="336" y="270" fill="#6e6a86" text-anchor="end">2</text>
+      <text x="366" y="270" fill="#c4a7e7">foam</text>
+      <text x="406" y="270" fill="#e0def4">=</text>
+      <text x="420" y="270" fill="#f6c177">"#9ccfd8",</text>
+
+      <text x="336" y="294" fill="#6e6a86" text-anchor="end">3</text>
+      <text x="350" y="294" fill="#e0def4">}</text>
+
+      <text x="336" y="318" fill="#6e6a86" text-anchor="end">4</text>
+
+      <text x="336" y="342" fill="#44415a" text-anchor="end">~</text>
+      <text x="336" y="366" fill="#44415a" text-anchor="end">~</text>
+      <text x="336" y="390" fill="#44415a" text-anchor="end">~</text>
+      <text x="336" y="414" fill="#44415a" text-anchor="end">~</text>
+      <text x="336" y="438" fill="#44415a" text-anchor="end">~</text>
+      <text x="336" y="462" fill="#44415a" text-anchor="end">~</text>
+      <text x="336" y="486" fill="#44415a" text-anchor="end">~</text>
+      <text x="336" y="510" fill="#44415a" text-anchor="end">~</text>
+      <text x="336" y="534" fill="#44415a" text-anchor="end">~</text>
+    </g>
+
+    <!-- global statusline (lualine), laststatus=3 spans full width -->
+    <rect x="60" y="549" width="1080" height="26" fill="#2a273f"/>
+    <rect x="64" y="553" width="80" height="18" rx="2" fill="#3e8fb0"/>
+    <text class="mono b" x="104" y="566" fill="#232136" font-size="11" text-anchor="middle">NORMAL</text>
+    <text class="mono" x="156" y="566" fill="#e0def4" font-size="12">wezterm.lua</text>
+    <text class="mono" x="300" y="566" fill="#c4a7e7" font-size="12">main</text>
+    <text class="mono" x="1128" y="566" fill="#908caa" font-size="12" text-anchor="end"><tspan fill="#9ccfd8">Lua</tspan>   UTF-8   42:18</text>
+  </g>
+</svg>
