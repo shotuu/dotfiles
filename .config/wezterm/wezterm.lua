@@ -152,6 +152,7 @@ config.keys = {
   { key = "=", mods = "CMD", action = act.IncreaseFontSize },
   { key = "-", mods = "CMD", action = act.DecreaseFontSize },
   { key = "0", mods = "CMD", action = act.ResetFontSize },
+  { key = "Enter", mods = "CMD", action = act.ToggleFullScreen },
 
   -- Pane/tab multiplexing built into WezTerm itself, mirroring the tmux
   -- bindings documented in the README (split, navigate, resize, zoom, new
