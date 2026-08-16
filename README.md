@@ -1,6 +1,6 @@
 # shotu-dotfiles
 
-![WezTerm's welcome banner: a starry night sky, system stats, recent directories, and Claude usage, in the Rose Pine Moon theme](.github/banner.svg)
+![WezTerm's welcome banner: a starry night sky, system stats, recent directories, and Claude and Codex usage, in the Rose Pine Moon theme](.github/banner.svg)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-232136?style=flat-square&logo=opensourceinitiative&logoColor=f6c177)](LICENSE)
 [![macOS](https://img.shields.io/badge/macOS-232136?style=flat-square&logo=apple&logoColor=f6c177)](#macos)

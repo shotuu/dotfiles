@@ -93,18 +93,28 @@
       <text x="380" y="398" fill="#e0def4">90%</text>
     </g>
 
-    <!-- left column: claude usage -->
-    <text class="mono b" x="130" y="432" fill="#f6c177" font-size="15" text-decoration="underline">✳ claude usage</text>
+    <!-- left column: agent usage -->
+    <text class="mono b" x="130" y="432" fill="#f6c177" font-size="15" text-decoration="underline">✳ agent usage</text>
     <g class="mono" font-size="13">
-      <text x="130" y="458" fill="#908caa">5h left</text>
+      <text x="130" y="458" fill="#908caa">claude 5h</text>
       <rect x="230" y="448" width="140" height="14" rx="3" fill="#44415a"/>
       <rect x="230" y="448" width="112" height="14" rx="3" fill="#9ccfd8"/>
       <text x="380" y="458" fill="#e0def4">80%</text>
 
-      <text x="130" y="482" fill="#908caa">7d left</text>
+      <text x="130" y="482" fill="#908caa">claude 7d</text>
       <rect x="230" y="472" width="140" height="14" rx="3" fill="#44415a"/>
       <rect x="230" y="472" width="122" height="14" rx="3" fill="#9ccfd8"/>
       <text x="380" y="482" fill="#e0def4">87%</text>
+
+      <text x="130" y="506" fill="#908caa">codex 5h</text>
+      <rect x="230" y="496" width="140" height="14" rx="3" fill="#44415a"/>
+      <rect x="230" y="496" width="104" height="14" rx="3" fill="#9ccfd8"/>
+      <text x="380" y="506" fill="#e0def4">74%</text>
+
+      <text x="130" y="530" fill="#908caa">codex 7d</text>
+      <rect x="230" y="520" width="140" height="14" rx="3" fill="#44415a"/>
+      <rect x="230" y="520" width="118" height="14" rx="3" fill="#9ccfd8"/>
+      <text x="380" y="530" fill="#e0def4">84%</text>
     </g>
 
     <!-- right column: recent directories, ranked bars -->

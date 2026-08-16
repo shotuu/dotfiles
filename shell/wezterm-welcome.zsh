@@ -399,6 +399,113 @@ except Exception:
 PY
 }
 
+# Codex writes the latest account rate-limit snapshot into its local session
+# transcript whenever it completes a turn. This follows the same deliberately
+# cached approach as the Claude section above: opening a tab never launches
+# Codex or makes a network request. The transcript is internal state, so read
+# it defensively and omit Codex when its format changes or no recent snapshot
+# exists. Prints "primary_pct|primary_reset|primary_window|secondary_pct|
+# secondary_reset|secondary_window|age", where pct is remaining percentage.
+_wc_codex_usage() {
+  local sessions_dir="$HOME/.codex/sessions"
+  [[ -d "$sessions_dir" ]] || return 1
+  command -v python3 >/dev/null 2>&1 || return 1
+  python3 - "$sessions_dir" <<'PY' 2>/dev/null
+import json, sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+def parse_time(value):
+    if not isinstance(value, str):
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+def fmt_reset(epoch):
+    if not isinstance(epoch, (int, float)):
+        return ""
+    try:
+        dt = datetime.fromtimestamp(epoch, tz=timezone.utc)
+        local = dt.astimezone()
+        if (dt - datetime.now(timezone.utc)).total_seconds() < 20 * 3600:
+            return local.strftime("%-I:%M%p").lower()
+        return local.strftime("%a").lower()
+    except (OverflowError, OSError, ValueError):
+        return ""
+
+def fmt_window(minutes):
+    if not isinstance(minutes, (int, float)) or minutes <= 0:
+        return ""
+    minutes = int(minutes)
+    if minutes % 1440 == 0:
+        return f"{minutes // 1440}d"
+    if minutes % 60 == 0:
+        return f"{minutes // 60}h"
+    return f"{minutes}m"
+
+def fmt_age(dt):
+    if dt is None:
+        return ""
+    age_s = datetime.now(timezone.utc).timestamp() - dt.timestamp()
+    if age_s < 0:
+        return ""
+    if age_s < 60:
+        return "just now"
+    if age_s < 3600:
+        return f"{int(age_s // 60)}m ago"
+    if age_s < 86400:
+        return f"{int(age_s // 3600)}h ago"
+    return f"{int(age_s // 86400)}d ago"
+
+try:
+    root = Path(sys.argv[1])
+    # Only inspect the newest few transcripts. Each contains several rolling
+    # snapshots, and choosing the newest timestamp among them avoids a large
+    # history scan during shell startup.
+    files = sorted(root.rglob("*.jsonl"), key=lambda path: path.stat().st_mtime, reverse=True)[:8]
+    newest = None
+    for path in files:
+        try:
+            with path.open() as stream:
+                for line in stream:
+                    record = json.loads(line)
+                    payload = record.get("payload") or {}
+                    limits = payload.get("rate_limits") or payload.get("rateLimits")
+                    if not isinstance(limits, dict):
+                        continue
+                    timestamp = parse_time(record.get("timestamp"))
+                    if timestamp is None:
+                        continue
+                    if newest is None or timestamp > newest[0]:
+                        newest = (timestamp, limits)
+        except (OSError, ValueError, json.JSONDecodeError):
+            continue
+
+    if newest is None:
+        sys.exit(1)
+    timestamp, limits = newest
+
+    def read_window(name):
+        window = limits.get(name) or {}
+        used = window.get("used_percent", window.get("usedPercent"))
+        if not isinstance(used, (int, float)):
+            return ("", "", "")
+        reset = window.get("resets_at", window.get("resetsAt"))
+        duration = window.get("window_minutes", window.get("windowDurationMins"))
+        return (str(max(0, min(100, round(100 - used)))), fmt_reset(reset), fmt_window(duration))
+
+    primary = read_window("primary")
+    secondary = read_window("secondary")
+    if not primary[0] and not secondary[0]:
+        sys.exit(1)
+    print("|".join((*primary, *secondary, fmt_age(timestamp))))
+except Exception:
+    sys.exit(1)
+PY
+}
+
 # One field per line (host/os/shell/uptime/load/memory/disk/battery) rather
 # than combining os+shell+uptime+load onto one long line -- that combined
 # line doesn't fit a two-column layout, and one-fact-per-row also happens to
@@ -481,38 +588,60 @@ _wc_system_info() {
   fi
 }
 
-# Claude Code's remaining 5-hour/7-day usage, as its own section (with its
-# own header) rather than tacked onto system info -- it's account/usage
-# data, not host data, so it deserves its own visual box even though it
-# currently lives in the same column.
-_wc_claude_section() {
+# Claude and Codex are both account/usage data rather than host data, so they
+# share one section. The source name in each row makes the two agents easy to
+# compare while keeping Codex directly beneath Claude.
+_wc_agent_usage_section() {
   local bar_width=${1:-18}
-  local claude_line five_pct five_reset week_pct week_reset age_str
+  local claude_line five_pct five_reset week_pct week_reset claude_age
+  local codex_line primary_pct primary_reset primary_window secondary_pct secondary_reset secondary_window codex_age
   claude_line=$(_wc_claude_usage)
-  [[ -n "$claude_line" ]] || return 0
-  IFS='|' read -r five_pct five_reset week_pct week_reset age_str <<<"$claude_line"
-  [[ -n "$five_pct" || -n "$week_pct" ]] || return 0
+  codex_line=$(_wc_codex_usage)
+  [[ -n "$claude_line" || -n "$codex_line" ]] || return 0
 
-  _wc_header "✳" "claude usage"
-  if [[ -n "$five_pct" ]]; then
-    printf '  '
-    _wc subtle "$(printf '%-10s' '5h left')"
-    _wc_bar "$five_pct" "$bar_width" "${five_reset:+resets $five_reset}"
-    printf '\n'
+  _wc_header "✳" "agent usage"
+  if [[ -n "$claude_line" ]]; then
+    IFS='|' read -r five_pct five_reset week_pct week_reset claude_age <<<"$claude_line"
+    if [[ -n "$five_pct" ]]; then
+      printf '  '
+      _wc subtle "$(printf '%-10s' 'claude 5h')"
+      _wc_bar "$five_pct" "$bar_width" "${five_reset:+resets $five_reset}"
+      printf '\n'
+    fi
+    if [[ -n "$week_pct" ]]; then
+      printf '  '
+      _wc subtle "$(printf '%-10s' 'claude 7d')"
+      _wc_bar "$week_pct" "$bar_width" "${week_reset:+resets $week_reset}"
+      printf '\n'
+    fi
+    [[ -n "$claude_age" ]] && {
+      printf '  '
+      _wc muted "$(printf '%-10s' '')"
+      _wc muted "claude updated ${claude_age}"
+      printf '\n'
+    }
   fi
-  if [[ -n "$week_pct" ]]; then
-    printf '  '
-    _wc subtle "$(printf '%-10s' '7d left')"
-    _wc_bar "$week_pct" "$bar_width" "${week_reset:+resets $week_reset}"
-    printf '\n'
-  fi
-  # This is a cached reading (see _wc_claude_usage above), not a live one --
-  # surfacing its age so a stale number reads as stale instead of current.
-  if [[ -n "$age_str" ]]; then
-    printf '  '
-    _wc muted "$(printf '%-10s' '')"
-    _wc muted "updated ${age_str}"
-    printf '\n'
+
+  if [[ -n "$codex_line" ]]; then
+    IFS='|' read -r primary_pct primary_reset primary_window secondary_pct secondary_reset secondary_window codex_age <<<"$codex_line"
+    if [[ -n "$primary_pct" ]]; then
+      printf '  '
+      _wc subtle "$(printf '%-10s' "codex ${primary_window:-primary}")"
+      _wc_bar "$primary_pct" "$bar_width" "${primary_reset:+resets $primary_reset}"
+      printf '\n'
+    fi
+    if [[ -n "$secondary_pct" ]]; then
+      printf '  '
+      _wc subtle "$(printf '%-10s' "codex ${secondary_window:-secondary}")"
+      _wc_bar "$secondary_pct" "$bar_width" "${secondary_reset:+resets $secondary_reset}"
+      printf '\n'
+    fi
+    [[ -n "$codex_age" ]] && {
+      printf '  '
+      _wc muted "$(printf '%-10s' '')"
+      _wc muted "codex updated ${codex_age}"
+      printf '\n'
+    }
   fi
 }
 
@@ -615,7 +744,7 @@ _wc_render_body() {
     _wc_header "⚙" "system"
     _wc_system_info 24
     printf '\n'
-    _wc_claude_section 24
+    _wc_agent_usage_section 24
   )
   right_col=$(
     _wc_header "▤" "recent directories"
@@ -696,5 +825,5 @@ done
 _wc muted "$(printf '╰'; printf -- '─%.0s' {1..162}; printf '╯')"
 printf '\n\n'
 
-unset -f _wc _wc_starline _wc_visible_width _wc_star_pad _wc_box_line _wc_pad_to _wc_two_column _wc_fullwidth _wc_block _wc_letterspace _wc_bar _wc_header _wc_os_version _wc_uptime _wc_loadavg _wc_mem_stats _wc_claude_usage _wc_claude_section _wc_system_info _wc_recent_dirs_rows _wc_render_body
+unset -f _wc _wc_starline _wc_visible_width _wc_star_pad _wc_box_line _wc_pad_to _wc_two_column _wc_fullwidth _wc_block _wc_letterspace _wc_bar _wc_header _wc_os_version _wc_uptime _wc_loadavg _wc_mem_stats _wc_claude_usage _wc_codex_usage _wc_agent_usage_section _wc_system_info _wc_recent_dirs_rows _wc_render_body
 unset _wc_rose _wc_fw _WC_CONTENT_WIDTH _WC_COL_WIDTH _WC_GAP
