@@ -29,6 +29,13 @@ typeset -A _wc_rose=(
   highlight_med "#44415a"
 )
 
+# Visible width of the box interior (between the two border characters,
+# excluding the 1-space pad on each side). Every content line is expected
+# to fit within this after its own internal indent; the widest thing that
+# has to (the figlet greeting for "good afternoon, daniel") comes in at 92,
+# so this leaves a couple of columns of slack.
+typeset -gi _WC_CONTENT_WIDTH=94
+
 _wc() {
   local hex=$_wc_rose[$1]
   local r=$((16#${hex:1:2})) g=$((16#${hex:3:2})) b=$((16#${hex:5:2}))
@@ -40,22 +47,23 @@ _wc() {
 # as varied and alive rather than a flat wash of one color. `moon_col`, when
 # >0, places a moon emoji (a real double-width glyph reads as an actual
 # moon at a glance, unlike hand-drawn block art) -- reserving the column
-# after it too, since the emoji occupies two terminal cells.
+# after it too, since the emoji occupies two terminal cells. Fills exactly
+# `width` visible columns and no more, so it can go straight into the box
+# border with no extra padding needed.
 _wc_starline() {
   local width=$1 moon_col=$2
   local -a glyphs=('.' '·' '+' '✦' '*' '˙')
   local -A star_at
   local n placed col i roll
-  n=$(( (RANDOM % 6) + 16 ))
+  n=$(( (RANDOM % 6) + 18 ))
   placed=0
   while (( placed < n )); do
-    col=$(( (RANDOM % (width - 6)) + 2 ))
+    col=$(( (RANDOM % (width - 4)) + 1 ))
     (( moon_col > 0 && ( col == moon_col || col == moon_col + 1 ) )) && continue
     [[ -n "${star_at[$col]}" ]] && continue
     star_at[$col]="${glyphs[$(( (RANDOM % ${#glyphs[@]}) + 1 ))]}"
     (( placed++ ))
   done
-  printf '  '
   for (( i = 1; i <= width; i++ )); do
     if (( i == moon_col )); then
       printf '🌙'
@@ -76,11 +84,71 @@ _wc_starline() {
   printf '\n'
 }
 
+# Strips this file's own SGR sequences and measures the *visible* column
+# width of a line, correcting for the moon emoji (one codepoint, two
+# terminal columns) -- needed to pad box rows to a consistent width even
+# though the raw string already contains ANSI color codes and wide glyphs.
+_wc_visible_width() {
+  local stripped moons
+  stripped=$(printf '%s' "$1" | sed -E $'s/\x1b\\[[0-9;]*m//g')
+  moons=$(grep -o '🌙' <<<"$stripped" | wc -l | tr -d ' ')
+  printf '%d' $(( ${#stripped} + moons ))
+}
+
+# Wraps one already-colored line in the box border, padding it out to
+# _WC_CONTENT_WIDTH. Padding isn't just blank space: most of it is, but
+# some columns get a dim star glyph instead, so the sky shows up next to
+# real content and not only on the dedicated starline rows.
+_wc_box_line() {
+  local raw=$1
+  local visible pad_needed
+  visible=$(_wc_visible_width "$raw")
+  pad_needed=$(( _WC_CONTENT_WIDTH - visible ))
+  (( pad_needed < 0 )) && pad_needed=0
+
+  local -a glyphs=('.' '·' '+' '✦' '*' '˙')
+  local -A pad_star_at
+  local num_stars=0
+  if (( pad_needed >= 6 )); then
+    num_stars=$(( pad_needed / 20 ))
+    (( RANDOM % 100 < 40 )) && num_stars=$(( num_stars + 1 ))
+    (( num_stars > 5 )) && num_stars=5
+  fi
+  local placed=0 pos tries=0
+  while (( placed < num_stars && tries < 25 )); do
+    pos=$(( (RANDOM % pad_needed) + 1 ))
+    tries=$(( tries + 1 ))
+    [[ -n "${pad_star_at[$pos]}" ]] && continue
+    pad_star_at[$pos]="${glyphs[$(( (RANDOM % ${#glyphs[@]}) + 1 ))]}"
+    (( placed++ ))
+  done
+
+  _wc muted "│"
+  printf ' %s' "$raw"
+  local pi roll
+  for (( pi = 1; pi <= pad_needed; pi++ )); do
+    if [[ -n "${pad_star_at[$pi]}" ]]; then
+      roll=$(( RANDOM % 3 ))
+      if (( roll == 0 )); then
+        _wc gold "${pad_star_at[$pi]}"
+      elif (( roll == 1 )); then
+        _wc text "${pad_star_at[$pi]}"
+      else
+        _wc subtle "${pad_star_at[$pi]}"
+      fi
+    else
+      printf ' '
+    fi
+  done
+  printf ' '
+  _wc muted "│"
+  printf '\n'
+}
+
 # Fullwidth Unicode forms (U+FF00 block) render as double-width in a
-# monospace terminal, which is what actually makes text look "bigger"
-# without falling back to multi-row block-letter art. Only covers the
-# letters the greeting phrases and ", daniel" ever use; anything else
-# (spaces) passes through unchanged.
+# monospace terminal -- the fallback greeting style if figlet isn't
+# installed. Only covers the letters the greeting phrases and ", daniel"
+# ever use; anything else (spaces) passes through unchanged.
 typeset -A _wc_fw=(
   a "ａ" d "ｄ" e "ｅ" f "ｆ" g "ｇ" h "ｈ" i "ｉ" l "ｌ" m "ｍ"
   n "ｎ" o "ｏ" p "ｐ" r "ｒ" s "ｓ" t "ｔ" u "ｕ" v "ｖ" "," "，"
@@ -95,28 +163,25 @@ _wc_fullwidth() {
   printf '%s' "$out"
 }
 
-# Colors and indents a multi-line block as a unit (one SGR code covering
-# every line, rather than re-emitting it per line) -- used for the figlet
-# greeting, which is several rows tall.
-_wc_block() {
-  local color=$1 text=$2 hex r g b line
-  hex=$_wc_rose[$color]
-  r=$((16#${hex:1:2})) g=$((16#${hex:3:2})) b=$((16#${hex:5:2}))
-  printf '\033[38;2;%d;%d;%dm' "$r" "$g" "$b"
-  while IFS= read -r line; do
-    printf '  %s\n' "$line"
-  done <<<"$text"
-  printf '\033[0m'
-}
-
-# "g o o d   e v e n i n g" -- regular-width letter-spacing for the smaller
-# subheading text (date/time), where fullwidth would look oversized.
+# "g o o d   e v e n i n g" -- regular-width letter-spacing for the small
+# date subheading under the figlet greeting.
 _wc_letterspace() {
   local word=$1 i out=""
   for (( i = 1; i <= ${#word}; i++ )); do
     out+="${word[$i]} "
   done
   printf '%s' "$out"
+}
+
+# Colors a multi-line block as a unit (one SGR code covering every line,
+# rather than re-emitting it per line) -- used for the figlet greeting.
+_wc_block() {
+  local color=$1 text=$2 hex r g b line
+  hex=$_wc_rose[$color]
+  r=$((16#${hex:1:2})) g=$((16#${hex:3:2})) b=$((16#${hex:5:2}))
+  while IFS= read -r line; do
+    printf '\033[38;2;%d;%d;%dm  %s\033[0m\n' "$r" "$g" "$b" "$line"
+  done <<<"$text"
 }
 
 # Bracketed block-bar, e.g. "[██████░░░░] 62%  discharging". Colored
@@ -226,21 +291,21 @@ _wc_system_info() {
   load_str=$(_wc_loadavg)
 
   printf '  '
-  _wc muted "$(printf '%-9s' 'host')"
+  _wc subtle "$(printf '%-9s' 'host')"
   _wc foam "$host"
   printf '\n'
 
   printf '  '
-  _wc muted "$(printf '%-9s' 'system')"
+  _wc subtle "$(printf '%-9s' 'system')"
   _wc foam "$os_name"
-  _wc highlight_med "  ·  "
+  _wc muted "  ·  "
   _wc text "$shell_info"
   if [[ -n "$uptime_str" ]]; then
-    _wc highlight_med "  ·  up "
+    _wc muted "  ·  up "
     _wc text "$uptime_str"
   fi
   if [[ -n "$load_str" ]]; then
-    _wc highlight_med "  ·  load "
+    _wc muted "  ·  load "
     _wc text "$load_str"
   fi
   printf '\n'
@@ -250,7 +315,7 @@ _wc_system_info() {
   if [[ -n "$mem_line" ]]; then
     IFS='|' read -r mem_pct mem_used mem_total <<<"$mem_line"
     printf '  '
-    _wc muted "$(printf '%-9s' 'memory')"
+    _wc subtle "$(printf '%-9s' 'memory')"
     _wc_bar "$mem_pct" 25 "${mem_used} / ${mem_total} gb"
     printf '\n'
   fi
@@ -259,7 +324,7 @@ _wc_system_info() {
   disk_pct_num=$(df -H "$HOME" 2>/dev/null | awk 'NR==2{gsub("%","",$5); print $5}')
   if [[ -n "$disk_pct_num" ]]; then
     printf '  '
-    _wc muted "$(printf '%-9s' 'disk')"
+    _wc subtle "$(printf '%-9s' 'disk')"
     _wc_bar "$disk_pct_num" 25 "used"
     printf '\n'
   fi
@@ -275,135 +340,158 @@ _wc_system_info() {
   fi
   if [[ -n "$battery_pct" ]]; then
     printf '  '
-    _wc muted "$(printf '%-9s' 'battery')"
+    _wc subtle "$(printf '%-9s' 'battery')"
     _wc_bar "$battery_pct" 25 "$battery_state"
     printf '\n'
   fi
 }
 
-# Most-frecent zoxide directories as a horizontal bar chart, scaled
-# relative to the top entry's score.
-_wc_frequent_dirs() {
-  command -v zoxide >/dev/null 2>&1 || return 0
-  local -a zlines
-  zlines=("${(@f)$(zoxide query -l -s 2>/dev/null | sort -rn | head -n 6)}")
-  (( ${#zlines[@]} == 0 )) && return 0
+# Most-recently-visited directories, deduplicated and numbered so they line
+# up with the `j <n>` / `jj` jump commands defined in zshrc-managed-block.zsh
+# (tracked via a chpwd hook into $RECENT_DIRS_FILE -- see that file for why
+# this isn't sourced from zoxide). Bar length decays by rank rather than a
+# real score, since a recency-ordered list has no score to chart, only an
+# order.
+_wc_recent_dirs() {
+  [[ -n "$RECENT_DIRS_FILE" && -f "$RECENT_DIRS_FILE" ]] || return 0
+  local -a rdirs rnames
+  local rpath rname ri rj rbarlen rbar rname_width=0 rcount
+  rdirs=("${(@f)$(<"$RECENT_DIRS_FILE")}")
+  (( ${#rdirs[@]} == 0 )) && return 0
+  (( ${#rdirs[@]} > 8 )) && rdirs=("${(@)rdirs[1,8]}")
+  rcount=${#rdirs[@]}
 
-  local -a znames zscores
-  local zline zscore zpath zname zi zj zbarlen zbar zmax=0 zname_width=0
-  for zline in "${zlines[@]}"; do
-    # zoxide right-pads scores with leading spaces for column alignment;
-    # `read` skips that leading whitespace for us and, since zpath is the
-    # last variable, still keeps spaces inside paths like "All Files".
-    IFS=$' \t' read -r zscore zpath <<<"$zline"
-    zname="${zpath:t}"
-    zname=${(L)zname}
-    znames+=("$zname")
-    zscores+=("${zscore%.*}")
-    (( ${zscore%.*} > zmax )) && zmax=${zscore%.*}
-    (( ${#zname} > zname_width )) && zname_width=${#zname}
+  for rpath in "${rdirs[@]}"; do
+    rname="${rpath:t}"
+    rname=${(L)rname}
+    rnames+=("$rname")
+    (( ${#rname} > rname_width )) && rname_width=${#rname}
   done
-  (( zmax == 0 )) && zmax=1
 
-  for (( zi = 1; zi <= ${#znames[@]}; zi++ )); do
-    zbarlen=$(( zscores[zi] * 24 / zmax ))
-    (( zbarlen < 1 )) && zbarlen=1
-    zbar=""
-    for (( zj = 0; zj < zbarlen; zj++ )); do zbar+="█"; done
-    for (( zj = zbarlen; zj < 24; zj++ )); do zbar+="░"; done
+  for (( ri = 1; ri <= rcount; ri++ )); do
+    rbarlen=$(( 22 - (ri - 1) * 22 / rcount ))
+    (( rbarlen < 1 )) && rbarlen=1
+    rbar=""
+    for (( rj = 0; rj < rbarlen; rj++ )); do rbar+="█"; done
+    for (( rj = rbarlen; rj < 22; rj++ )); do rbar+="░"; done
     printf '  '
-    _wc text "$(printf '%-*s' "$zname_width" "${znames[zi]}")"
+    _wc iris "$(printf '%2d' "$ri")"
     printf '  '
-    _wc iris "$zbar"
-    _wc muted "  ${zscores[zi]}"
+    _wc text "$(printf '%-*s' "$rname_width" "${rnames[ri]}")"
+    printf '  '
+    _wc iris "$rbar"
     printf '\n'
   done
+
+  printf '\n  '
+  _wc subtle "j <n>"
+  _wc subtle " jumps to a number above"
+  if command -v fzf >/dev/null 2>&1; then
+    _wc muted "   ·   "
+    _wc subtle "jj"
+    _wc subtle " fuzzy-picks the same list"
+  fi
+  printf '\n'
 }
 
-# Greeting, keyed off time of day.
-local hour greeting
-hour=$(date +%H)
-if (( hour < 5 )); then
-  greeting="still up"
-elif (( hour < 12 )); then
-  greeting="good morning"
-elif (( hour < 17 )); then
-  greeting="good afternoon"
-elif (( hour < 21 )); then
-  greeting="good evening"
-else
-  greeting="good night"
-fi
+# Everything between the box borders, unwrapped -- _wc_box_line pads and
+# frames each line of this afterward. Kept as its own function so its
+# output can be captured as one string and split back into lines.
+_wc_render_body() {
+  local hour greeting
+  hour=$(date +%H)
+  if (( hour < 5 )); then
+    greeting="still up"
+  elif (( hour < 12 )); then
+    greeting="good morning"
+  elif (( hour < 17 )); then
+    greeting="good afternoon"
+  elif (( hour < 21 )); then
+    greeting="good evening"
+  else
+    greeting="good night"
+  fi
 
-printf '\n'
-_wc_starline 92 82
-printf '\n'
-if command -v figlet >/dev/null 2>&1; then
-  _wc_block iris "$(figlet -f small -w 200 "${greeting}, daniel" 2>/dev/null)"
-else
-  printf '  '
-  _wc iris "$(_wc_fullwidth "${greeting}, daniel")"
+  _wc_starline "$_WC_CONTENT_WIDTH" 84
+  if command -v figlet >/dev/null 2>&1; then
+    _wc_block iris "$(figlet -f smshadow -w 200 "${greeting}, daniel" 2>/dev/null)"
+  else
+    printf '  '
+    _wc iris "$(_wc_fullwidth "${greeting}, daniel")"
+    printf '\n'
+  fi
+  printf '\n  '
+  # No clock here -- the banner is a snapshot printed once when the tab
+  # opens, so a time that stops ticking the moment you look away from it
+  # would just read as wrong a few seconds later.
+  _wc subtle "$(_wc_letterspace "$(date '+%A, %B %-d %Y' | tr '[:upper:]' '[:lower:]')")"
   printf '\n'
-fi
-printf '\n  '
-_wc subtle "$(_wc_letterspace "$(date '+%A, %B %-d %Y  ·  %H:%M:%S' | tr '[:upper:]' '[:lower:]')")"
-printf '\n'
-_wc_starline 92 0
-printf '\n'
+  printf '\n'
 
-_wc_header "system"
-_wc_system_info
-printf '\n'
-_wc_starline 92 0
-printf '\n'
+  _wc_header "system"
+  _wc_system_info
+  printf '\n'
 
-_wc_header "frequent directories"
-_wc_frequent_dirs
-printf '\n'
-_wc_starline 92 0
-printf '\n'
+  _wc_header "recent directories"
+  _wc_recent_dirs
+  printf '\n'
 
-# A quote pulled at random each tab -- a mix of the genuinely inspirational
-# and the programmer-in-joke, kept lowercase to match the rest of the
-# banner's typography rather than forcing a transform on arbitrary famous
-# quotes (which mangles proper nouns).
-local -a quotes=(
-  "simplicity is the soul of efficiency. — austin freeman"
-  "there are only two hard things in computer science: cache invalidation and naming things. — phil karlton"
-  "the best error message is the one that never shows up. — thomas fuchs"
-  "may the source be with you."
-  "it's not a bug, it's an undocumented feature."
-  "talk is cheap. show me the code. — linus torvalds"
-  "programs must be written for people to read, and only incidentally for machines to execute. — hal abelson"
-  "the only way to go fast is to go well. — robert c. martin"
-  "premature optimization is the root of all evil. — donald knuth"
-  "any sufficiently advanced technology is indistinguishable from magic. — arthur c. clarke"
-  "code never lies, comments sometimes do. — ron jeffries"
-  "weeks of coding can save you hours of planning."
-  "ctrl+z is the closest thing we have to a time machine."
-  "may your builds be green and your merges be clean."
-  "do or do not, there is no try. — yoda"
-  "the two most important days in your life are the day you are born and the day you find out why. — mark twain"
-)
-printf '  '
-_wc gold "❝ "
-_wc text "${quotes[$(( (RANDOM % ${#quotes[@]}) + 1 ))]}"
+  # A quote pulled at random each tab -- a mix of the genuinely inspirational
+  # and the programmer-in-joke, kept lowercase to match the rest of the
+  # banner's typography rather than forcing a transform on arbitrary famous
+  # quotes (which mangles proper nouns). Trimmed to fit one box row.
+  local -a quotes=(
+    "simplicity is the soul of efficiency. — austin freeman"
+    "there are only two hard things: cache invalidation and naming things. — phil karlton"
+    "the best error message is the one that never shows up. — thomas fuchs"
+    "may the source be with you."
+    "it's not a bug, it's an undocumented feature."
+    "talk is cheap. show me the code. — linus torvalds"
+    "programs must be written for people to read, not just for machines. — hal abelson"
+    "the only way to go fast is to go well. — robert c. martin"
+    "premature optimization is the root of all evil. — donald knuth"
+    "any sufficiently advanced technology is indistinguishable from magic. — arthur c. clarke"
+    "code never lies, comments sometimes do. — ron jeffries"
+    "weeks of coding can save you hours of planning."
+    "ctrl+z is the closest thing we have to a time machine."
+    "may your builds be green and your merges be clean."
+    "do or do not, there is no try. — yoda"
+    "it always seems impossible until it's done. — nelson mandela"
+  )
+  printf '  '
+  _wc gold "❝ "
+  _wc text "${quotes[$(( (RANDOM % ${#quotes[@]}) + 1 ))]}"
+  printf '\n'
+  printf '\n'
+
+  # A rotating tip, mostly to reinforce muscle memory for the custom bindings.
+  local -a tips=(
+    "ctrl-space then | or -  splits a pane (cmd-d / cmd-shift-d also work)"
+    "ctrl-space then h/j/k/l  moves between panes"
+    "ctrl-space then z  zooms the focused pane"
+    "ctrl-space then r  reloads this config after an edit"
+    "new tabs (cmd-t) always start at ~; splits inherit the current directory"
+  )
+  printf '  '
+  _wc iris "tip"
+  _wc subtle "  ${tips[$(( (RANDOM % ${#tips[@]}) + 1 ))]}"
+  printf '\n'
+  _wc_starline "$_WC_CONTENT_WIDTH" 0
+}
+
+printf '\n'
+_wc muted "$(printf '╭'; printf -- '─%.0s' {1..96}; printf '╮')"
+printf '\n'
+local _wc_body_text
+_wc_body_text=$(_wc_render_body)
+local -a _wc_body_lines
+_wc_body_lines=("${(@f)_wc_body_text}")
+local _wc_line
+for _wc_line in "${_wc_body_lines[@]}"; do
+  _wc_box_line "$_wc_line"
+done
+_wc muted "$(printf '╰'; printf -- '─%.0s' {1..96}; printf '╯')"
 printf '\n\n'
 
-# A rotating tip, mostly to reinforce muscle memory for the custom bindings.
-local -a tips=(
-  "ctrl-space then | or -  splits a pane (cmd-d / cmd-shift-d also work)"
-  "ctrl-space then h/j/k/l  moves between panes"
-  "ctrl-space then z  zooms the focused pane"
-  "ctrl-space then r  reloads this config after an edit"
-  "new tabs (cmd-t) always start at ~; splits inherit the current directory"
-)
-printf '  '
-_wc iris "tip"
-_wc subtle "  ${tips[$(( (RANDOM % ${#tips[@]}) + 1 ))]}"
-printf '\n'
-_wc_starline 92 0
-printf '\n\n'
-
-unset -f _wc _wc_starline _wc_fullwidth _wc_letterspace _wc_bar _wc_header _wc_os_version _wc_uptime _wc_loadavg _wc_mem_stats _wc_system_info _wc_frequent_dirs
-unset _wc_rose _wc_fw
+unset -f _wc _wc_starline _wc_visible_width _wc_box_line _wc_fullwidth _wc_block _wc_letterspace _wc_bar _wc_header _wc_os_version _wc_uptime _wc_loadavg _wc_mem_stats _wc_system_info _wc_recent_dirs _wc_render_body
+unset _wc_rose _wc_fw _WC_CONTENT_WIDTH

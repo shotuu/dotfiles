@@ -35,6 +35,62 @@ if [[ -f "$(brew --prefix 2>/dev/null)/share/zsh-syntax-highlighting/zsh-syntax-
   source "$(brew --prefix)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
 fi
 
+# Recent directories: a deduplicated, most-recently-visited-first stack,
+# tracked ourselves via a chpwd hook rather than reusing zoxide -- zoxide
+# blends frequency and recency into one opaque score with no CLI flag to
+# get pure last-visited order back out. $HOME itself is excluded since new
+# WezTerm tabs already start there (not a "visit" worth tracking); this
+# also feeds the WezTerm welcome banner's numbered directory list.
+typeset -g RECENT_DIRS_FILE="$HOME/.cache/zsh/recent-dirs"
+typeset -gi RECENT_DIRS_MAX=15
+
+_track_recent_dir() {
+  [[ "$PWD" == "$HOME" ]] && return
+  mkdir -p "${RECENT_DIRS_FILE:h}"
+  local -a dirs
+  [[ -f "$RECENT_DIRS_FILE" ]] && dirs=("${(@f)$(<"$RECENT_DIRS_FILE")}")
+  dirs=("$PWD" "${(@)dirs:#$PWD}")
+  (( ${#dirs[@]} > RECENT_DIRS_MAX )) && dirs=("${(@)dirs[1,RECENT_DIRS_MAX]}")
+  print -l -- "${dirs[@]}" >| "$RECENT_DIRS_FILE"
+}
+autoload -Uz add-zsh-hook
+add-zsh-hook chpwd _track_recent_dir
+
+# `j` with no argument lists the recent-directories stack (also shown,
+# numbered, in the WezTerm welcome banner); `j <n>` jumps to entry n.
+j() {
+  local -a dirs
+  [[ -f "$RECENT_DIRS_FILE" ]] && dirs=("${(@f)$(<"$RECENT_DIRS_FILE")}")
+  if [[ -z "$1" ]]; then
+    local i
+    for (( i = 1; i <= ${#dirs[@]}; i++ )); do
+      printf '%2d  %s\n' "$i" "${dirs[i]}"
+    done
+    return 0
+  fi
+  if [[ -z "${dirs[$1]}" ]]; then
+    echo "j: no entry $1 (run 'j' with no argument to list)" >&2
+    return 1
+  fi
+  cd -- "${dirs[$1]}"
+}
+
+# `jj` fuzzy-picks from the same recent-directories stack via fzf, for when
+# you don't remember (or don't want to count) the number `j` would need.
+if command -v fzf >/dev/null 2>&1; then
+  jj() {
+    local -a dirs
+    [[ -f "$RECENT_DIRS_FILE" ]] && dirs=("${(@f)$(<"$RECENT_DIRS_FILE")}")
+    if (( ${#dirs[@]} == 0 )); then
+      echo "jj: no recent directories tracked yet" >&2
+      return 1
+    fi
+    local pick
+    pick=$(printf '%s\n' "${dirs[@]}" | fzf --prompt='jump to > ' --height=40% --reverse) || return 1
+    [[ -n "$pick" ]] && cd -- "$pick"
+  }
+fi
+
 if [[ -f "$HOME/.config/wezterm/welcome.zsh" ]]; then
   source "$HOME/.config/wezterm/welcome.zsh"
 fi
