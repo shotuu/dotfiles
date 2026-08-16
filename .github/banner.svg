@@ -1,9 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" role="img" aria-label="WezTerm with tmux and Neovim, Rose Pine Moon theme">
-  <title>shotu-dotfiles: WezTerm, tmux, and Neovim with the Rose Pine Moon theme</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" role="img" aria-label="WezTerm welcome banner, Rose Pine Moon theme">
+  <title>shotu-dotfiles: the WezTerm welcome banner, Rose Pine Moon theme</title>
   <defs>
     <style>
       .mono { font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; }
       .b { font-weight: 700; }
+      .i { font-style: italic; }
     </style>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#1a1826"/>
@@ -37,94 +38,114 @@
     <circle cx="84" cy="72" r="6" fill="#ec6a5e"/>
     <circle cx="102" cy="72" r="6" fill="#f4bf50"/>
     <circle cx="120" cy="72" r="6" fill="#61c454"/>
-
-    <!-- tmux status bar -->
-    <rect x="60" y="89" width="1080" height="30" fill="#393552"/>
-    <rect x="68" y="95" width="72" height="18" rx="3" fill="#f6c177"/>
-    <text class="mono b" x="104" y="108" fill="#232136" font-size="12" text-anchor="middle">main</text>
-
-    <rect x="150" y="95" width="76" height="18" rx="2" fill="#f6c177"/>
-    <text class="mono b" x="188" y="108" fill="#232136" font-size="12" text-anchor="middle">1: nvim</text>
-
-    <text class="mono" x="236" y="108" fill="#908caa" font-size="12">2: zsh</text>
-
-    <text class="mono b" x="1128" y="108" fill="#c4a7e7" font-size="12" text-anchor="end">shotu  <tspan fill="#6e6a86">•</tspan>  <tspan fill="#9ccfd8">2026-07-28  14:47:32</tspan></text>
+    <text class="mono" x="600" y="77" fill="#908caa" font-size="12" text-anchor="middle">daniel — zsh</text>
 
     <!-- content area -->
-    <rect x="60" y="119" width="1080" height="430" fill="#232136"/>
+    <rect x="60" y="89" width="1080" height="486" fill="#232136"/>
 
-    <!-- sidebar -->
-    <rect x="60" y="119" width="230" height="430" fill="#2a273f"/>
-    <line x1="290" y1="119" x2="290" y2="549" stroke="#44415a" stroke-width="1"/>
+    <!-- the welcome banner's own rounded box, inset within the window -->
+    <rect x="92" y="112" width="1016" height="438" rx="16" ry="16" fill="none" stroke="#6e6a86" stroke-width="1.5"/>
 
-    <text class="mono b" x="76" y="150" fill="#e0def4" font-size="13">shotu-dotfiles</text>
-    <text class="mono" x="76" y="176" fill="#908caa" font-size="12">▾ .config</text>
-    <text class="mono" x="92" y="198" fill="#908caa" font-size="12">▾ nvim</text>
-    <text class="mono" x="92" y="220" fill="#908caa" font-size="12">▸ wezterm</text>
+    <!-- night sky: scattered stars + a crescent moon in the corner -->
+    <g fill="#908caa" font-size="13" class="mono">
+      <text x="130" y="140">·</text>
+      <text x="180" y="150">+</text>
+      <text x="240" y="134">✦</text>
+      <text x="330" y="146">*</text>
+      <text x="470" y="136">˙</text>
+      <text x="560" y="148">·</text>
+      <text x="700" y="134">+</text>
+      <text x="820" y="144">·</text>
+      <text x="900" y="132">*</text>
+    </g>
+    <g fill="#e0def4" font-size="13" class="mono">
+      <text x="260" y="150">✦</text>
+      <text x="650" y="140">·</text>
+      <text x="760" y="150">*</text>
+    </g>
+    <circle cx="960" cy="150" r="16" fill="#f6c177"/>
+    <circle cx="967" cy="145" r="14" fill="#232136"/>
 
-    <rect x="64" y="231" width="222" height="20" fill="#393552"/>
-    <text class="mono b" x="92" y="246" fill="#f6c177" font-size="12">wezterm.lua</text>
+    <!-- greeting: a stand-in for the figlet "Terrace" banner font -->
+    <text class="mono b" x="128" y="222" fill="#c4a7e7" font-size="58" letter-spacing="1">good evening</text>
+    <text class="mono" x="130" y="252" fill="#908caa" font-size="14" letter-spacing="3">m o n d a y ,   a u g u s t   1 7   2 0 2 6</text>
 
-    <text class="mono" x="76" y="272" fill="#e0def4" font-size="12">.tmux.conf</text>
-    <text class="mono" x="76" y="296" fill="#e0def4" font-size="12">install.sh</text>
-    <text class="mono" x="76" y="320" fill="#e0def4" font-size="12">README.md</text>
+    <!-- section headers -->
+    <text class="mono b" x="130" y="298" fill="#f6c177" font-size="15" text-decoration="underline">⚙ system</text>
+    <text class="mono b" x="620" y="298" fill="#f6c177" font-size="15" text-decoration="underline">▤ recent directories</text>
 
-    <!-- editor: cursorline -->
-    <rect x="290" y="206" width="850" height="24" fill="#2a273f"/>
-
-    <!-- editor: gutter + code -->
+    <!-- left column: system facts -->
     <g class="mono" font-size="13">
-      <text x="336" y="147" fill="#6e6a86" text-anchor="end">3</text>
-      <text x="350" y="147" fill="#6e6a86">-- rose-pine-moon palette</text>
+      <text x="130" y="326" fill="#908caa">host</text>
+      <text x="230" y="326" fill="#9ccfd8">shotu-dotfiles</text>
 
-      <text x="336" y="171" fill="#6e6a86" text-anchor="end">2</text>
-      <text x="350" y="171" fill="#3e8fb0">local</text>
-      <text x="390" y="171" fill="#e0def4">rose = {</text>
+      <text x="130" y="350" fill="#908caa">os</text>
+      <text x="230" y="350" fill="#9ccfd8">macos 15.4</text>
 
-      <text x="336" y="195" fill="#6e6a86" text-anchor="end">1</text>
-      <text x="366" y="195" fill="#c4a7e7">base</text>
-      <text x="406" y="195" fill="#e0def4">=</text>
-      <text x="420" y="195" fill="#f6c177">"#232136",</text>
+      <text x="130" y="374" fill="#908caa">memory</text>
+      <rect x="230" y="364" width="140" height="14" rx="3" fill="#44415a"/>
+      <rect x="230" y="364" width="88" height="14" rx="3" fill="#9ccfd8"/>
+      <text x="380" y="374" fill="#e0def4">63%</text>
 
-      <rect x="292" y="209" width="3" height="18" fill="#3e8fb0"/>
-      <text x="336" y="222" fill="#e0def4" class="b" text-anchor="end">42</text>
-      <text x="366" y="222" fill="#c4a7e7">gold</text>
-      <text x="406" y="222" fill="#e0def4">=</text>
-      <text x="420" y="222" fill="#f6c177">"#f6c177",</text>
-      <rect x="524" y="207" width="2" height="20" fill="#e0def4"/>
-
-      <text x="336" y="246" fill="#6e6a86" text-anchor="end">1</text>
-      <text x="366" y="246" fill="#c4a7e7">pine</text>
-      <text x="406" y="246" fill="#e0def4">=</text>
-      <text x="420" y="246" fill="#f6c177">"#3e8fb0",</text>
-
-      <text x="336" y="270" fill="#6e6a86" text-anchor="end">2</text>
-      <text x="366" y="270" fill="#c4a7e7">foam</text>
-      <text x="406" y="270" fill="#e0def4">=</text>
-      <text x="420" y="270" fill="#f6c177">"#9ccfd8",</text>
-
-      <text x="336" y="294" fill="#6e6a86" text-anchor="end">3</text>
-      <text x="350" y="294" fill="#e0def4">}</text>
-
-      <text x="336" y="318" fill="#6e6a86" text-anchor="end">4</text>
-
-      <text x="336" y="342" fill="#44415a" text-anchor="end">~</text>
-      <text x="336" y="366" fill="#44415a" text-anchor="end">~</text>
-      <text x="336" y="390" fill="#44415a" text-anchor="end">~</text>
-      <text x="336" y="414" fill="#44415a" text-anchor="end">~</text>
-      <text x="336" y="438" fill="#44415a" text-anchor="end">~</text>
-      <text x="336" y="462" fill="#44415a" text-anchor="end">~</text>
-      <text x="336" y="486" fill="#44415a" text-anchor="end">~</text>
-      <text x="336" y="510" fill="#44415a" text-anchor="end">~</text>
-      <text x="336" y="534" fill="#44415a" text-anchor="end">~</text>
+      <text x="130" y="398" fill="#908caa">battery</text>
+      <rect x="230" y="388" width="140" height="14" rx="3" fill="#44415a"/>
+      <rect x="230" y="388" width="126" height="14" rx="3" fill="#9ccfd8"/>
+      <text x="380" y="398" fill="#e0def4">90%</text>
     </g>
 
-    <!-- global statusline (lualine), laststatus=3 spans full width -->
-    <rect x="60" y="549" width="1080" height="26" fill="#2a273f"/>
-    <rect x="64" y="553" width="80" height="18" rx="2" fill="#3e8fb0"/>
-    <text class="mono b" x="104" y="566" fill="#232136" font-size="11" text-anchor="middle">NORMAL</text>
-    <text class="mono" x="156" y="566" fill="#e0def4" font-size="12">wezterm.lua</text>
-    <text class="mono" x="300" y="566" fill="#c4a7e7" font-size="12">main</text>
-    <text class="mono" x="1128" y="566" fill="#908caa" font-size="12" text-anchor="end"><tspan fill="#9ccfd8">Lua</tspan>   UTF-8   42:18</text>
+    <!-- left column: claude usage -->
+    <text class="mono b" x="130" y="432" fill="#f6c177" font-size="15" text-decoration="underline">✳ claude usage</text>
+    <g class="mono" font-size="13">
+      <text x="130" y="458" fill="#908caa">5h left</text>
+      <rect x="230" y="448" width="140" height="14" rx="3" fill="#44415a"/>
+      <rect x="230" y="448" width="112" height="14" rx="3" fill="#9ccfd8"/>
+      <text x="380" y="458" fill="#e0def4">80%</text>
+
+      <text x="130" y="482" fill="#908caa">7d left</text>
+      <rect x="230" y="472" width="140" height="14" rx="3" fill="#44415a"/>
+      <rect x="230" y="472" width="122" height="14" rx="3" fill="#9ccfd8"/>
+      <text x="380" y="482" fill="#e0def4">87%</text>
+    </g>
+
+    <!-- right column: recent directories, ranked bars -->
+    <g class="mono" font-size="13">
+      <text x="620" y="326" fill="#c4a7e7">1</text>
+      <text x="640" y="326" fill="#e0def4">dotfiles</text>
+      <rect x="760" y="316" width="170" height="14" rx="3" fill="#44415a"/>
+      <rect x="760" y="316" width="170" height="14" rx="3" fill="#c4a7e7"/>
+
+      <text x="620" y="350" fill="#c4a7e7">2</text>
+      <text x="640" y="350" fill="#e0def4">nvim-config</text>
+      <rect x="760" y="340" width="170" height="14" rx="3" fill="#44415a"/>
+      <rect x="760" y="340" width="130" height="14" rx="3" fill="#c4a7e7"/>
+
+      <text x="620" y="374" fill="#c4a7e7">3</text>
+      <text x="640" y="374" fill="#e0def4">scripts</text>
+      <rect x="760" y="364" width="170" height="14" rx="3" fill="#44415a"/>
+      <rect x="760" y="364" width="95" height="14" rx="3" fill="#c4a7e7"/>
+
+      <text x="620" y="398" fill="#c4a7e7">4</text>
+      <text x="640" y="398" fill="#e0def4">shell</text>
+      <rect x="760" y="388" width="170" height="14" rx="3" fill="#44415a"/>
+      <rect x="760" y="388" width="60" height="14" rx="3" fill="#c4a7e7"/>
+    </g>
+
+    <!-- quote -->
+    <text class="mono i" x="130" y="510" fill="#e0def4" font-size="14">
+      <tspan fill="#f6c177">&#8220;</tspan> premature optimization is the root of all evil. <tspan fill="#f6c177">&#8221;</tspan>
+      <tspan fill="#908caa" font-style="normal"> — donald knuth</tspan>
+    </text>
+
+    <!-- tip -->
+    <text class="mono" x="130" y="536" fill="#c4a7e7" font-size="13">tip</text>
+    <text class="mono" x="182" y="536" fill="#908caa" font-size="13">ctrl-space then h/j/k/l  moves between panes</text>
+
+    <!-- bottom stars -->
+    <g fill="#908caa" font-size="13" class="mono">
+      <text x="860" y="480">.</text>
+      <text x="900" y="510">·</text>
+      <text x="950" y="530">+</text>
+      <text x="1000" y="500">*</text>
+    </g>
   </g>
 </svg>
