@@ -36,11 +36,11 @@ end
 local has_wsl = is_windows and command_succeeds({ "wsl.exe", "-l", "-q" })
 local has_pwsh = is_windows and command_succeeds({ "where", "pwsh.exe" })
 
--- True when the default shell this config launches will itself start tmux
--- (macOS/Linux, and Windows when handing off into WSL). False only for
--- native Windows without WSL, where there is no tmux build, so WezTerm's
--- own tab bar and LEADER-key pane bindings take over instead.
-local uses_tmux = not is_windows or has_wsl
+-- True only when handing off into WSL, whose own login shell/profile starts
+-- tmux itself (see default_prog below). Local macOS/Linux windows no longer
+-- auto-start tmux, so WezTerm's own tab bar and LEADER-key pane bindings
+-- take over there instead.
+local uses_tmux = is_windows and has_wsl
 
 local rose = {
   base = "#232136",
@@ -98,10 +98,9 @@ config.webgpu_power_preference = "HighPerformance"
 config.max_fps = 120
 config.animation_fps = 60
 
--- tmux owns the top status bar wherever it's available, so hide WezTerm's
--- own tab bar to avoid two bars. On native Windows without WSL there is no
--- tmux build, so WezTerm's tab bar (plus the LEADER-key bindings below)
--- takes over pane/tab visibility and navigation instead.
+-- tmux owns the top status bar inside WSL, so hide WezTerm's own tab bar
+-- there to avoid two bars. Everywhere else, WezTerm's tab bar (plus the
+-- LEADER-key bindings below) handles pane/tab visibility and navigation.
 config.enable_tab_bar = not uses_tmux
 
 config.default_cursor_style = "BlinkingBar"
@@ -127,19 +126,8 @@ if is_windows then
     config.default_prog = { has_pwsh and "pwsh.exe" or "powershell.exe", "-NoLogo" }
   end
 else
-  -- Start tmux automatically only for a fresh local window.
-  -- Inside an existing tmux session, start a normal zsh shell instead.
-  config.default_prog = {
-    zsh,
-    "-lc",
-    ([=[
-      if command -v tmux >/dev/null 2>&1 && [[ -z "$TMUX" ]]; then
-        exec tmux new-session -A -s main
-      else
-        exec %s -l
-      fi
-    ]=]):format(zsh),
-  }
+  -- Plain login shell; tmux is no longer started automatically.
+  config.default_prog = { zsh, "-l" }
 end
 
 config.leader = { key = "Space", mods = "CTRL", timeout_milliseconds = 1000 }
