@@ -32,14 +32,23 @@ typeset -A _wc_rose=(
 # Visible width of the box interior (between the two border characters,
 # excluding the 1-space pad on each side). Every content line is expected
 # to fit within this after its own internal indent; the widest thing that
-# has to (the figlet greeting for "good afternoon, daniel") comes in at 92,
-# so this leaves a couple of columns of slack.
-typeset -gi _WC_CONTENT_WIDTH=94
+# has to (the Terrace-font rendering of "afternoon slump", the widest
+# phrase in the greeting pool below) comes in at 152, so this leaves a bit
+# of slack while still fitting inside a plain full-width WezTerm tab (~198
+# columns here).
+typeset -gi _WC_CONTENT_WIDTH=160
+
+# Two-column layout (system info beside recent directories): each column's
+# visible width, and the gap of plain space between them. col*2 + gap =
+# _WC_CONTENT_WIDTH.
+typeset -gi _WC_COL_WIDTH=77
+typeset -gi _WC_GAP=6
 
 _wc() {
   local hex=$_wc_rose[$1]
   local r=$((16#${hex:1:2})) g=$((16#${hex:3:2})) b=$((16#${hex:5:2}))
-  printf '\033[38;2;%d;%d;%dm%s\033[0m' "$r" "$g" "$b" "$2"
+  local style=${3:+$3;}
+  printf '\033[%s38;2;%d;%d;%dm%s\033[0m' "$style" "$r" "$g" "$b" "$2"
 }
 
 # A night-sky line: densely scattered star glyphs, mostly dim `subtle` with
@@ -95,54 +104,94 @@ _wc_visible_width() {
   printf '%d' $(( ${#stripped} + moons ))
 }
 
+# Emits `width` visible columns of padding: mostly plain space with a
+# scattering of dim/bright star glyphs. Shared by every blank stretch in
+# the banner -- the outer box's right margin, the inter-column gutter, and
+# the blank separator line between sub-sections -- so stars show up evenly
+# everywhere there's empty space rather than pooling only in the dedicated
+# starline rows (which is what happened when the box margin was the only
+# place this logic ran).
+_wc_star_pad() {
+  local width=$1
+  (( width <= 0 )) && return 0
+  local -a glyphs=('.' '·' '+' '✦' '*' '˙')
+  local -A star_at
+  local num_stars=0
+  if (( width >= 6 )); then
+    num_stars=$(( width / 20 ))
+    (( RANDOM % 100 < 40 )) && num_stars=$(( num_stars + 1 ))
+    (( num_stars > 5 )) && num_stars=5
+  fi
+  local placed=0 pos tries=0
+  while (( placed < num_stars && tries < 25 )); do
+    pos=$(( (RANDOM % width) + 1 ))
+    tries=$(( tries + 1 ))
+    [[ -n "${star_at[$pos]}" ]] && continue
+    star_at[$pos]="${glyphs[$(( (RANDOM % ${#glyphs[@]}) + 1 ))]}"
+    (( placed++ ))
+  done
+  local pi roll
+  for (( pi = 1; pi <= width; pi++ )); do
+    if [[ -n "${star_at[$pi]}" ]]; then
+      roll=$(( RANDOM % 3 ))
+      if (( roll == 0 )); then
+        _wc gold "${star_at[$pi]}"
+      elif (( roll == 1 )); then
+        _wc text "${star_at[$pi]}"
+      else
+        _wc subtle "${star_at[$pi]}"
+      fi
+    else
+      printf ' '
+    fi
+  done
+}
+
 # Wraps one already-colored line in the box border, padding it out to
-# _WC_CONTENT_WIDTH. Padding isn't just blank space: most of it is, but
-# some columns get a dim star glyph instead, so the sky shows up next to
-# real content and not only on the dedicated starline rows.
+# _WC_CONTENT_WIDTH with _wc_star_pad.
 _wc_box_line() {
   local raw=$1
   local visible pad_needed
   visible=$(_wc_visible_width "$raw")
   pad_needed=$(( _WC_CONTENT_WIDTH - visible ))
   (( pad_needed < 0 )) && pad_needed=0
-
-  local -a glyphs=('.' '·' '+' '✦' '*' '˙')
-  local -A pad_star_at
-  local num_stars=0
-  if (( pad_needed >= 6 )); then
-    num_stars=$(( pad_needed / 20 ))
-    (( RANDOM % 100 < 40 )) && num_stars=$(( num_stars + 1 ))
-    (( num_stars > 5 )) && num_stars=5
-  fi
-  local placed=0 pos tries=0
-  while (( placed < num_stars && tries < 25 )); do
-    pos=$(( (RANDOM % pad_needed) + 1 ))
-    tries=$(( tries + 1 ))
-    [[ -n "${pad_star_at[$pos]}" ]] && continue
-    pad_star_at[$pos]="${glyphs[$(( (RANDOM % ${#glyphs[@]}) + 1 ))]}"
-    (( placed++ ))
-  done
-
   _wc muted "│"
   printf ' %s' "$raw"
-  local pi roll
-  for (( pi = 1; pi <= pad_needed; pi++ )); do
-    if [[ -n "${pad_star_at[$pi]}" ]]; then
-      roll=$(( RANDOM % 3 ))
-      if (( roll == 0 )); then
-        _wc gold "${pad_star_at[$pi]}"
-      elif (( roll == 1 )); then
-        _wc text "${pad_star_at[$pi]}"
-      else
-        _wc subtle "${pad_star_at[$pi]}"
-      fi
-    else
-      printf ' '
-    fi
-  done
+  _wc_star_pad "$pad_needed"
   printf ' '
   _wc muted "│"
   printf '\n'
+}
+
+# Right-pads one already-colored line to `width` visible columns, via
+# _wc_star_pad -- same texture as the outer box margin, so the inter-column
+# gutter doesn't read as a dead strip next to it.
+_wc_pad_to() {
+  local raw=$1 width=$2 visible pad
+  visible=$(_wc_visible_width "$raw")
+  pad=$(( width - visible ))
+  (( pad < 0 )) && pad=0
+  printf '%s' "$raw"
+  _wc_star_pad "$pad"
+}
+
+# Zips two multi-line (already-colored) blocks into side-by-side columns,
+# one output line per row of the taller side -- the shorter side just pads
+# out blank for its remaining rows.
+_wc_two_column() {
+  local raw_left=$1 raw_right=$2
+  local -a left right
+  left=("${(@f)raw_left}")
+  right=("${(@f)raw_right}")
+  local n=${#left[@]}
+  (( ${#right[@]} > n )) && n=${#right[@]}
+  local i
+  for (( i = 1; i <= n; i++ )); do
+    _wc_pad_to "${left[i]:-}" "$_WC_COL_WIDTH"
+    _wc_star_pad "$_WC_GAP"
+    printf '%s' "${right[i]:-}"
+    printf '\n'
+  done
 }
 
 # Fullwidth Unicode forms (U+FF00 block) render as double-width in a
@@ -150,8 +199,9 @@ _wc_box_line() {
 # installed. Only covers the letters the greeting phrases and ", daniel"
 # ever use; anything else (spaces) passes through unchanged.
 typeset -A _wc_fw=(
-  a "ａ" d "ｄ" e "ｅ" f "ｆ" g "ｇ" h "ｈ" i "ｉ" l "ｌ" m "ｍ"
-  n "ｎ" o "ｏ" p "ｐ" r "ｒ" s "ｓ" t "ｔ" u "ｕ" v "ｖ" "," "，"
+  a "ａ" b "ｂ" c "ｃ" d "ｄ" e "ｅ" f "ｆ" g "ｇ" h "ｈ" i "ｉ" j "ｊ"
+  k "ｋ" l "ｌ" m "ｍ" n "ｎ" o "ｏ" p "ｐ" q "ｑ" r "ｒ" s "ｓ" t "ｔ"
+  u "ｕ" v "ｖ" w "ｗ" x "ｘ" y "ｙ" z "ｚ" "," "，" "'" "＇"
 )
 
 _wc_fullwidth() {
@@ -209,13 +259,16 @@ _wc_bar() {
   [[ -n "$label" ]] && _wc subtle "  ${label}"
 }
 
-# Small colored bullet + label, used identically above every section so the
+# Icon + underlined label, used identically above every section so the
 # banner reads as one consistent structure rather than differently-styled
-# blocks stitched together.
+# blocks stitched together. Headers get their own reserved color (gold,
+# underlined) rather than reusing `iris` -- iris is already the general
+# "accent" used all over the body (bars, the tip label), so a header in
+# that same color wouldn't actually read as a distinct tier above it.
 _wc_header() {
   printf '  '
-  _wc iris "· "
-  _wc subtle "$1"
+  _wc gold "$1 "
+  _wc gold "$2" "4"
   printf '\n'
 }
 
@@ -280,7 +333,80 @@ _wc_mem_stats() {
   printf '%d|%.1f|%.1f' "$pct" "$used_gb" "$total_gb"
 }
 
+# Claude Code caches its last-known usage utilization in ~/.claude.json
+# (cachedUsageUtilization.utilization), refreshed whenever the CLI last
+# talked to the backend -- there's no way for this script to force a fresh
+# pull without spending an API call and needing credentials it doesn't
+# have, so it just reports how old the cached reading is (via fetchedAtMs)
+# alongside it, rather than implying it's live. This is undocumented/
+# internal state, not a public API, so it's read defensively: any missing
+# field, unexpected shape, or future schema change just means these rows
+# don't show up rather than breaking the banner. Prints
+# "five_pct|five_reset|week_pct|week_reset|age" where the *_pct values are
+# *remaining* percentage (so _wc_bar's low-pct red styling means "running
+# low," matching its use for battery).
+_wc_claude_usage() {
+  local config="$HOME/.claude.json"
+  [[ -r "$config" ]] || return 1
+  command -v python3 >/dev/null 2>&1 || return 1
+  python3 - "$config" <<'PY' 2>/dev/null
+import json, sys
+from datetime import datetime, timezone
+
+def fmt_reset(iso):
+    if not iso:
+        return ""
+    try:
+        dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+        local = dt.astimezone()
+        if (dt - datetime.now(timezone.utc)).total_seconds() < 20 * 3600:
+            return local.strftime("%-I:%M%p").lower()
+        return local.strftime("%a").lower()
+    except Exception:
+        return ""
+
+def fmt_age(fetched_ms):
+    if not isinstance(fetched_ms, (int, float)):
+        return ""
+    age_s = datetime.now(timezone.utc).timestamp() - fetched_ms / 1000
+    if age_s < 0:
+        return ""
+    if age_s < 60:
+        return "just now"
+    if age_s < 3600:
+        return f"{int(age_s // 60)}m ago"
+    if age_s < 86400:
+        return f"{int(age_s // 3600)}h ago"
+    return f"{int(age_s // 86400)}d ago"
+
+try:
+    with open(sys.argv[1]) as f:
+        data = json.load(f)
+    cached = data.get("cachedUsageUtilization") or {}
+    util = cached.get("utilization") or {}
+    five = util.get("five_hour") or {}
+    week = util.get("seven_day") or {}
+    five_pct = five.get("utilization")
+    week_pct = week.get("utilization")
+    if five_pct is None and week_pct is None:
+        sys.exit(1)
+    five_remaining = 100 - five_pct if isinstance(five_pct, (int, float)) else ""
+    week_remaining = 100 - week_pct if isinstance(week_pct, (int, float)) else ""
+    age = fmt_age(cached.get("fetchedAtMs"))
+    print(f"{five_remaining}|{fmt_reset(five.get('resets_at'))}|{week_remaining}|{fmt_reset(week.get('resets_at'))}|{age}")
+except Exception:
+    sys.exit(1)
+PY
+}
+
+# One field per line (host/os/shell/uptime/load/memory/disk/battery) rather
+# than combining os+shell+uptime+load onto one long line -- that combined
+# line doesn't fit a two-column layout, and one-fact-per-row also happens to
+# land at up to 8 rows, matching the recent-directories list it sits next
+# to. `bar_width` is a parameter (rather than hardcoded) since it needs to
+# shrink to fit a half-width column.
 _wc_system_info() {
+  local bar_width=${1:-18}
   local host os_name shell_info uptime_str load_str
   host=$(hostname -s 2>/dev/null)
   host=${(L)host}
@@ -291,32 +417,41 @@ _wc_system_info() {
   load_str=$(_wc_loadavg)
 
   printf '  '
-  _wc subtle "$(printf '%-9s' 'host')"
+  _wc subtle "$(printf '%-10s' 'host')"
   _wc foam "$host"
   printf '\n'
 
   printf '  '
-  _wc subtle "$(printf '%-9s' 'system')"
+  _wc subtle "$(printf '%-10s' 'os')"
   _wc foam "$os_name"
-  _wc muted "  ·  "
-  _wc text "$shell_info"
-  if [[ -n "$uptime_str" ]]; then
-    _wc muted "  ·  up "
-    _wc text "$uptime_str"
-  fi
-  if [[ -n "$load_str" ]]; then
-    _wc muted "  ·  load "
-    _wc text "$load_str"
-  fi
   printf '\n'
+
+  printf '  '
+  _wc subtle "$(printf '%-10s' 'shell')"
+  _wc text "$shell_info"
+  printf '\n'
+
+  if [[ -n "$uptime_str" ]]; then
+    printf '  '
+    _wc subtle "$(printf '%-10s' 'uptime')"
+    _wc text "$uptime_str"
+    printf '\n'
+  fi
+
+  if [[ -n "$load_str" ]]; then
+    printf '  '
+    _wc subtle "$(printf '%-10s' 'load')"
+    _wc text "$load_str"
+    printf '\n'
+  fi
 
   local mem_line mem_pct mem_used mem_total
   mem_line=$(_wc_mem_stats)
   if [[ -n "$mem_line" ]]; then
     IFS='|' read -r mem_pct mem_used mem_total <<<"$mem_line"
     printf '  '
-    _wc subtle "$(printf '%-9s' 'memory')"
-    _wc_bar "$mem_pct" 25 "${mem_used} / ${mem_total} gb"
+    _wc subtle "$(printf '%-10s' 'memory')"
+    _wc_bar "$mem_pct" "$bar_width" "${mem_used}/${mem_total}gb"
     printf '\n'
   fi
 
@@ -324,8 +459,8 @@ _wc_system_info() {
   disk_pct_num=$(df -H "$HOME" 2>/dev/null | awk 'NR==2{gsub("%","",$5); print $5}')
   if [[ -n "$disk_pct_num" ]]; then
     printf '  '
-    _wc subtle "$(printf '%-9s' 'disk')"
-    _wc_bar "$disk_pct_num" 25 "used"
+    _wc subtle "$(printf '%-10s' 'disk')"
+    _wc_bar "$disk_pct_num" "$bar_width" "used"
     printf '\n'
   fi
 
@@ -340,8 +475,43 @@ _wc_system_info() {
   fi
   if [[ -n "$battery_pct" ]]; then
     printf '  '
-    _wc subtle "$(printf '%-9s' 'battery')"
-    _wc_bar "$battery_pct" 25 "$battery_state"
+    _wc subtle "$(printf '%-10s' 'battery')"
+    _wc_bar "$battery_pct" "$bar_width" "$battery_state"
+    printf '\n'
+  fi
+}
+
+# Claude Code's remaining 5-hour/7-day usage, as its own section (with its
+# own header) rather than tacked onto system info -- it's account/usage
+# data, not host data, so it deserves its own visual box even though it
+# currently lives in the same column.
+_wc_claude_section() {
+  local bar_width=${1:-18}
+  local claude_line five_pct five_reset week_pct week_reset age_str
+  claude_line=$(_wc_claude_usage)
+  [[ -n "$claude_line" ]] || return 0
+  IFS='|' read -r five_pct five_reset week_pct week_reset age_str <<<"$claude_line"
+  [[ -n "$five_pct" || -n "$week_pct" ]] || return 0
+
+  _wc_header "✳" "claude usage"
+  if [[ -n "$five_pct" ]]; then
+    printf '  '
+    _wc subtle "$(printf '%-10s' '5h left')"
+    _wc_bar "$five_pct" "$bar_width" "${five_reset:+resets $five_reset}"
+    printf '\n'
+  fi
+  if [[ -n "$week_pct" ]]; then
+    printf '  '
+    _wc subtle "$(printf '%-10s' '7d left')"
+    _wc_bar "$week_pct" "$bar_width" "${week_reset:+resets $week_reset}"
+    printf '\n'
+  fi
+  # This is a cached reading (see _wc_claude_usage above), not a live one --
+  # surfacing its age so a stale number reads as stale instead of current.
+  if [[ -n "$age_str" ]]; then
+    printf '  '
+    _wc muted "$(printf '%-10s' '')"
+    _wc muted "updated ${age_str}"
     printf '\n'
   fi
 }
@@ -351,8 +521,13 @@ _wc_system_info() {
 # (tracked via a chpwd hook into $RECENT_DIRS_FILE -- see that file for why
 # this isn't sourced from zoxide). Bar length decays by rank rather than a
 # real score, since a recency-ordered list has no score to chart, only an
-# order.
-_wc_recent_dirs() {
+# order. Only the numbered rows themselves -- capped at 8 to match
+# _wc_system_info's row count for the two-column layout; the header and the
+# jump hint are separate so the caller can place them independently (the
+# header sits beside "· system", the hint runs full-width below both
+# columns since it isn't tied to one row).
+_wc_recent_dirs_rows() {
+  local bar_width=${1:-20}
   [[ -n "$RECENT_DIRS_FILE" && -f "$RECENT_DIRS_FILE" ]] || return 0
   local -a rdirs rnames
   local rpath rname ri rj rbarlen rbar rname_width=0 rcount
@@ -364,16 +539,17 @@ _wc_recent_dirs() {
   for rpath in "${rdirs[@]}"; do
     rname="${rpath:t}"
     rname=${(L)rname}
+    (( ${#rname} > 21 )) && rname="${rname[1,20]}…"
     rnames+=("$rname")
     (( ${#rname} > rname_width )) && rname_width=${#rname}
   done
 
   for (( ri = 1; ri <= rcount; ri++ )); do
-    rbarlen=$(( 22 - (ri - 1) * 22 / rcount ))
+    rbarlen=$(( bar_width - (ri - 1) * bar_width / rcount ))
     (( rbarlen < 1 )) && rbarlen=1
     rbar=""
     for (( rj = 0; rj < rbarlen; rj++ )); do rbar+="█"; done
-    for (( rj = rbarlen; rj < 22; rj++ )); do rbar+="░"; done
+    for (( rj = rbarlen; rj < bar_width; rj++ )); do rbar+="░"; done
     printf '  '
     _wc iris "$(printf '%2d' "$ri")"
     printf '  '
@@ -382,42 +558,48 @@ _wc_recent_dirs() {
     _wc iris "$rbar"
     printf '\n'
   done
-
-  printf '\n  '
-  _wc subtle "j <n>"
-  _wc subtle " jumps to a number above"
-  if command -v fzf >/dev/null 2>&1; then
-    _wc muted "   ·   "
-    _wc subtle "jj"
-    _wc subtle " fuzzy-picks the same list"
-  fi
-  printf '\n'
 }
 
 # Everything between the box borders, unwrapped -- _wc_box_line pads and
 # frames each line of this afterward. Kept as its own function so its
 # output can be captured as one string and split back into lines.
 _wc_render_body() {
-  local hour greeting
+  local hour
   hour=$(date +%H)
+  # A pool of possible greetings rather than one fixed phrase per time
+  # bucket, so which one shows up is a small surprise each time a tab
+  # opens. Some are anytime phrases (available regardless of the hour);
+  # the rest are only added into the pool when they actually fit the
+  # current time, so it won't wish you "good morning" at 11pm.
+  local -a greeting_pool=(
+    "hello again" "welcome back" "ready to build" "let's ship it" "systems online"
+    "terminal ready" "here we go" "back at it" "hey there" "logged in"
+    "all systems go" "code awaits"
+  )
   if (( hour < 5 )); then
-    greeting="still up"
+    greeting_pool+=("still up" "night owl" "burning oil" "past midnight" "wide awake" "moonlight coding")
   elif (( hour < 12 )); then
-    greeting="good morning"
+    greeting_pool+=("good morning" "rise and shine" "early bird" "morning coffee" "fresh start" "up with the sun")
   elif (( hour < 17 )); then
-    greeting="good afternoon"
+    greeting_pool+=("good afternoon" "midday grind" "keep going" "afternoon slump" "halfway there")
   elif (( hour < 21 )); then
-    greeting="good evening"
+    greeting_pool+=("good evening" "evening unwind" "winding down" "golden hour")
   else
-    greeting="good night"
+    greeting_pool+=("good night" "night mode" "under the stars" "wrapping up" "stargazing")
   fi
+  local greeting="${greeting_pool[$(( (RANDOM % ${#greeting_pool[@]}) + 1 ))]}"
 
-  _wc_starline "$_WC_CONTENT_WIDTH" 84
-  if command -v figlet >/dev/null 2>&1; then
-    _wc_block iris "$(figlet -f smshadow -w 200 "${greeting}, daniel" 2>/dev/null)"
+  _wc_starline "$_WC_CONTENT_WIDTH" 142
+  if [[ -f "$HOME/.config/wezterm/fonts/Terrace.flf" ]]; then
+    # Terrace isn't a stock figlet font -- it's patorjk's own TAAG font,
+    # bundled in shell/wezterm-fonts/ and installed to this path by
+    # install.sh, since figlet only ships the classic font set.
+    _wc_block iris "$(figlet -d "$HOME/.config/wezterm/fonts" -f Terrace -w 300 "$greeting" 2>/dev/null)"
+  elif command -v figlet >/dev/null 2>&1; then
+    _wc_block iris "$(figlet -f rectangles -k -w 300 "$greeting" 2>/dev/null)"
   else
     printf '  '
-    _wc iris "$(_wc_fullwidth "${greeting}, daniel")"
+    _wc iris "$(_wc_fullwidth "$greeting")"
     printf '\n'
   fi
   printf '\n  '
@@ -428,12 +610,18 @@ _wc_render_body() {
   printf '\n'
   printf '\n'
 
-  _wc_header "system"
-  _wc_system_info
-  printf '\n'
-
-  _wc_header "recent directories"
-  _wc_recent_dirs
+  local left_col right_col
+  left_col=$(
+    _wc_header "⚙" "system"
+    _wc_system_info 24
+    printf '\n'
+    _wc_claude_section 24
+  )
+  right_col=$(
+    _wc_header "▤" "recent directories"
+    _wc_recent_dirs_rows 27
+  )
+  _wc_two_column "$left_col" "$right_col"
   printf '\n'
 
   # A quote pulled at random each tab -- a mix of the genuinely inspirational
@@ -458,9 +646,24 @@ _wc_render_body() {
     "do or do not, there is no try. — yoda"
     "it always seems impossible until it's done. — nelson mandela"
   )
+  # Split "text — attribution" so the two can be styled differently -- the
+  # quote itself in italic (a standard typographic convention for
+  # quotations), the attribution smaller/dimmer, both bracketed in actual
+  # opening+closing quote marks instead of just a leading one.
+  local quote quote_text quote_attrib
+  quote="${quotes[$(( (RANDOM % ${#quotes[@]}) + 1 ))]}"
+  if [[ "$quote" == *" — "* ]]; then
+    quote_text="${quote%% — *}"
+    quote_attrib="${quote#*— }"
+  else
+    quote_text="$quote"
+    quote_attrib=""
+  fi
   printf '  '
   _wc gold "❝ "
-  _wc text "${quotes[$(( (RANDOM % ${#quotes[@]}) + 1 ))]}"
+  _wc text "$quote_text" "3"
+  _wc gold " ❞"
+  [[ -n "$quote_attrib" ]] && _wc subtle "  — ${quote_attrib}"
   printf '\n'
   printf '\n'
 
@@ -480,7 +683,7 @@ _wc_render_body() {
 }
 
 printf '\n'
-_wc muted "$(printf '╭'; printf -- '─%.0s' {1..96}; printf '╮')"
+_wc muted "$(printf '╭'; printf -- '─%.0s' {1..162}; printf '╮')"
 printf '\n'
 local _wc_body_text
 _wc_body_text=$(_wc_render_body)
@@ -490,8 +693,8 @@ local _wc_line
 for _wc_line in "${_wc_body_lines[@]}"; do
   _wc_box_line "$_wc_line"
 done
-_wc muted "$(printf '╰'; printf -- '─%.0s' {1..96}; printf '╯')"
+_wc muted "$(printf '╰'; printf -- '─%.0s' {1..162}; printf '╯')"
 printf '\n\n'
 
-unset -f _wc _wc_starline _wc_visible_width _wc_box_line _wc_fullwidth _wc_block _wc_letterspace _wc_bar _wc_header _wc_os_version _wc_uptime _wc_loadavg _wc_mem_stats _wc_system_info _wc_recent_dirs _wc_render_body
-unset _wc_rose _wc_fw _WC_CONTENT_WIDTH
+unset -f _wc _wc_starline _wc_visible_width _wc_star_pad _wc_box_line _wc_pad_to _wc_two_column _wc_fullwidth _wc_block _wc_letterspace _wc_bar _wc_header _wc_os_version _wc_uptime _wc_loadavg _wc_mem_stats _wc_claude_usage _wc_claude_section _wc_system_info _wc_recent_dirs_rows _wc_render_body
+unset _wc_rose _wc_fw _WC_CONTENT_WIDTH _WC_COL_WIDTH _WC_GAP

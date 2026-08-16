@@ -185,6 +185,9 @@ if [[ "$INSTALL_WEZTERM" == true ]]; then
   copy_file \
     "$REPO_ROOT/shell/wezterm-welcome.zsh" \
     "$HOME/.config/wezterm/welcome.zsh"
+  copy_directory \
+    "$REPO_ROOT/shell/wezterm-fonts" \
+    "$HOME/.config/wezterm/fonts"
 fi
 
 if [[ "$INSTALL_TMUX" == true ]]; then
