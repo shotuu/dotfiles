@@ -689,6 +689,47 @@ _wc_recent_dirs_rows() {
   done
 }
 
+# Pending todos, via the `nudge` CLI (~/All Files/Projects/nudge). Reads
+# through `nudge plain`'s tab-separated "priority\ttext" feed rather than its
+# JSON store directly, so this stays in sync with whatever sort order that
+# tool uses for its own numbering -- the numbers shown here are exactly the
+# `<n>` that `nudge done <n>` / `nudge rm <n>` expect, the same relationship
+# `j <n>` has to the recent-directories list above it. Sits in the right
+# column, stacked below recent directories, so it lines up beside "agent
+# usage" in the left column rather than running as its own full-width row.
+_wc_nudge_rows() {
+  local max_text=${1:-50}
+  command -v nudge >/dev/null 2>&1 || return 0
+  local -a lines
+  lines=("${(@f)$(nudge plain 2>/dev/null)}")
+  if (( ${#lines[@]} == 0 )) || [[ -z "${lines[1]}" ]]; then
+    printf '  '
+    _wc foam "nothing on your list — nice."
+    printf '\n'
+    return 0
+  fi
+  (( ${#lines[@]} > 8 )) && lines=("${(@)lines[1,8]}")
+
+  local line pr ttext ti=0
+  for line in "${lines[@]}"; do
+    (( ti++ ))
+    pr="${line%%$'\t'*}"
+    ttext="${line#*$'\t'}"
+    (( ${#ttext} > max_text )) && ttext="${ttext[1,max_text-1]}…"
+    printf '  '
+    _wc iris "$(printf '%2d' "$ti")"
+    printf '  '
+    if [[ "$pr" == "1" ]]; then
+      _wc gold "★"
+    else
+      printf ' '
+    fi
+    printf ' '
+    _wc text "$ttext"
+    printf '\n'
+  done
+}
+
 # Everything between the box borders, unwrapped -- _wc_box_line pads and
 # frames each line of this afterward. Kept as its own function so its
 # output can be captured as one string and split back into lines.
@@ -749,6 +790,9 @@ _wc_render_body() {
   right_col=$(
     _wc_header "▤" "recent directories"
     _wc_recent_dirs_rows 27
+    printf '\n'
+    _wc_header "✓" "todos"
+    _wc_nudge_rows 50
   )
   _wc_two_column "$left_col" "$right_col"
   printf '\n'
@@ -825,5 +869,5 @@ done
 _wc muted "$(printf '╰'; printf -- '─%.0s' {1..162}; printf '╯')"
 printf '\n\n'
 
-unset -f _wc _wc_starline _wc_visible_width _wc_star_pad _wc_box_line _wc_pad_to _wc_two_column _wc_fullwidth _wc_block _wc_letterspace _wc_bar _wc_header _wc_os_version _wc_uptime _wc_loadavg _wc_mem_stats _wc_claude_usage _wc_codex_usage _wc_agent_usage_section _wc_system_info _wc_recent_dirs_rows _wc_render_body
+unset -f _wc _wc_starline _wc_visible_width _wc_star_pad _wc_box_line _wc_pad_to _wc_two_column _wc_fullwidth _wc_block _wc_letterspace _wc_bar _wc_header _wc_os_version _wc_uptime _wc_loadavg _wc_mem_stats _wc_claude_usage _wc_codex_usage _wc_agent_usage_section _wc_system_info _wc_recent_dirs_rows _wc_nudge_rows _wc_render_body
 unset _wc_rose _wc_fw _WC_CONTENT_WIDTH _WC_COL_WIDTH _WC_GAP
