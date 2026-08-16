@@ -8,6 +8,7 @@ brew "zoxide"
 brew "fzf"
 brew "zsh-autosuggestions"
 brew "zsh-syntax-highlighting"
+brew "figlet"
 
 # Modern command-line tools
 brew "eza"

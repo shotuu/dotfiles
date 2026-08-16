@@ -182,6 +182,9 @@ if [[ "$INSTALL_WEZTERM" == true ]]; then
   copy_file \
     "$REPO_ROOT/.config/wezterm/wezterm.lua" \
     "$HOME/.config/wezterm/wezterm.lua"
+  copy_file \
+    "$REPO_ROOT/shell/wezterm-welcome.zsh" \
+    "$HOME/.config/wezterm/welcome.zsh"
 fi
 
 if [[ "$INSTALL_TMUX" == true ]]; then

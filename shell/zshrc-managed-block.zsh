@@ -34,3 +34,7 @@ fi
 if [[ -f "$(brew --prefix 2>/dev/null)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]]; then
   source "$(brew --prefix)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
 fi
+
+if [[ -f "$HOME/.config/wezterm/welcome.zsh" ]]; then
+  source "$HOME/.config/wezterm/welcome.zsh"
+fi
