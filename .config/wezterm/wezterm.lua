@@ -259,6 +259,14 @@ local function tab_icon_and_label(pane)
   local basename = (process:match("([^/\\]+)$") or process):gsub("%.exe$", ""):lower()
   local title = pane.title or ""
 
+  -- claude's own launcher is a symlink (~/.local/bin/claude) into a
+  -- versioned binary (~/.local/share/claude/versions/2.1.234), and WezTerm
+  -- reports the resolved path's basename -- the version number -- rather
+  -- than the symlink name. Catch that by path shape instead of by name.
+  if process:find("/claude/versions/", 1, true) then
+    return ICON_CLAUDE, "Claude"
+  end
+
   if basename == "zsh" or basename == "bash" or basename == "fish" or basename == "sh" then
     return ICON_SHELL, cwd_basename(pane) or "shell"
   elseif basename == "nvim" or basename == "vim" then

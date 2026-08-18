@@ -791,7 +791,7 @@ _wc_render_body() {
     _wc_header "▤" "recent directories"
     _wc_recent_dirs_rows 27
     printf '\n'
-    _wc_header "✓" "todos"
+    _wc_header "✓" "nudge"
     _wc_nudge_rows 50
   )
   _wc_two_column "$left_col" "$right_col"
